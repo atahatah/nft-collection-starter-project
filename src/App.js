@@ -5,10 +5,12 @@ import React, { useEffect, useState } from "react";
 import "./styles/App.css";
 import twitterLogo from "./assets/twitter-logo.svg";
 // Constantsを宣言する: constとは値書き換えを禁止した変数を宣言する方法です。
-const TWITTER_HANDLE = "あなたのTwitterのハンドルネームを貼り付けてください";
+const TWITTER_HANDLE = "HataRatdotl";
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const OPENSEA_LINK = "";
 const TOTAL_MINT_COUNT = 50;
+
+const CONTRACT_ADDRESS = "0x7B16E8DcE94E22E7BAc0389ca66A90aAb0b2E647";
 const App = () => {
   /*
    * ユーザーのウォレットアドレスを格納するために使用する状態変数を定義します。
@@ -38,6 +40,8 @@ const App = () => {
       const account = accounts[0];
       console.log("Found an authorized account:", account);
       setCurrentAccount(account);
+      // この時点で、ユーザーはウォレット接続が済んでいます。
+      setupEventListener();
     } else {
       console.log("No authorized account found");
     }
@@ -64,13 +68,44 @@ const App = () => {
        * ウォレットアドレスを currentAccount に紐付けます。
        */
       setCurrentAccount(accounts[0]);
+
+      setupEventListener();
     } catch (error) {
       console.log(error);
     }
   };
 
+  // setupEventListener 関数を定義します。
+  // MyEpicNFT.sol の中で event が　emit された時に、
+  // 情報を受け取ります。
+  const setupEventListener = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        // NFT が発行されます。
+        const connectedContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          myEpicNft.abi,
+          signer
+        );
+        // Event が　emit される際に、コントラクトから送信される情報を受け取っています。
+        connectedContract.on("NewEpicNFTMinted", (from, tokenId) => {
+          console.log(from, tokenId.toNumber());
+          alert(
+            `あなたのウォレットに NFT を送信しました。OpenSea に表示されるまで最大で10分かかることがあります。NFT へのリンクはこちらです: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`
+          );
+        });
+        console.log("Setup event listener!");
+      } else {
+        console.log("Ethereum object doesn't exist!");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
   const askContractToMintNft = async () => {
-    const CONTRACT_ADDRESS = "0x2445130b64b44983beac54dd5a0da949093a1337";
     try {
       const { ethereum } = window;
       if (ethereum) {
